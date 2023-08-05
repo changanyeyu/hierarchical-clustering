@@ -1,0 +1,100 @@
+# Import necessary libraries
+import random
+import pandas as pd
+import numpy as np
+from sklearn.cluster import KMeans
+from sklearn import preprocessing
+from sklearn.preprocessing import StandardScaler
+from scipy.spatial.distance import cdist
+import matplotlib.pyplot as plt
+from scipy.cluster import hierarchy
+
+# Read data from Excel file and create a DataFrame
+df = pd.read_excel("F:\cluster analysis\data 1.xlsx")
+
+# Drop rows with missing values
+df1 = df.dropna()
+
+# Extract data columns and remove the 'Subjects' column
+data = df1.drop('Subjects', axis=1)
+
+# Display the first few rows of the data
+data.head()
+
+# Calculate the correlation matrix of the DataFrame
+df.corr()
+
+# Normalize the data using L2 normalization
+from sklearn.preprocessing import normalize
+data_scaled = normalize(data)
+data_scaled = pd.DataFrame(data_scaled, columns=data.columns)
+
+# Plot dendrograms using hierarchical clustering
+import scipy.cluster.hierarchy as shc
+plt.figure(dpi=1000)
+plt.xticks(alpha=0)
+plt.tick_params(axis='x', width=0)
+plt.plot(color='k')
+plt.yticks(fontsize=12, fontweight='bold')
+plt.xlabel("Subjects", labelpad=1, fontsize=12, fontweight='bold')
+plt.ylabel("Height", labelpad=None, fontsize=12, fontweight='bold')
+plt.title("Dendrograms", fontsize=12, fontweight='bold')
+dend = shc.dendrogram(shc.linkage(data_scaled, method='ward'), color_threshold=2)
+
+# Plot Calinski-Harabasz scores for different numbers of clusters
+plt.figure(figsize=(15, 10), dpi=1000)
+from sklearn import metrics
+ch_scores = []
+for i in range(2, 10):
+    km = KMeans(n_clusters=i, init='k-means++', n_init=10, max_iter=300, random_state=0)
+    km.fit(data_scaled)
+    ch_scores.append(metrics.calinski_harabasz_score(data_scaled, km.labels_))
+plt.plot(range(2, 10), ch_scores, marker='o', color='b')
+plt.xticks(fontsize=12, fontweight='bold')
+plt.yticks(fontsize=12, fontweight='bold')
+plt.xlabel("Number of clusters", fontsize=12, fontweight='bold')
+plt.ylabel('calinski_harabaz_score', fontsize=12, fontweight='bold')
+
+# Plot Silhouette scores for different numbers of clusters
+plt.figure(figsize=(20, 15), dpi=1000)
+ch_scores = []
+for i in range(2, 10):
+    km = KMeans(n_clusters=i, init='k-means++', n_init=10, max_iter=300, random_state=0)
+    km.fit(data_scaled)
+    ch_scores.append(metrics.silhouette_score(data_scaled, km.labels_, metric='euclidean'))
+plt.plot(range(2, 10), ch_scores, marker='o', color='g')
+plt.xticks(fontsize=12, fontweight='bold')
+plt.yticks(fontsize=12, fontweight='bold')
+plt.xlabel('Number of clusters', fontsize=12, fontweight='bold')
+plt.ylabel('silhouette_score', fontsize=12, fontweight='bold')
+
+# Plot Davies-Bouldin scores for different numbers of clusters
+plt.figure(figsize=(20, 15), dpi=1000)
+from sklearn.metrics import davies_bouldin_score as dbs
+ch_scores = []
+for i in range(2, 10):
+    km = KMeans(n_clusters=i, init='k-means++', n_init=10, max_iter=300, random_state=0)
+    km.fit(data_scaled)
+    ch_scores.append(dbs(data_scaled, km.labels_))
+plt.plot(range(2, 10), ch_scores, marker='o', color='r')
+plt.xticks(fontsize=12, fontweight='bold')
+plt.yticks(fontsize=12, fontweight='bold')
+plt.ylabel("davies_bouldin_score", fontsize=12, fontweight='bold')
+plt.xlabel("Number of clusters", fontsize=12, fontweight='bold')
+
+# Perform Agglomerative Clustering with 2 clusters and obtain the labels
+from sklearn.cluster import AgglomerativeClustering
+cluster = AgglomerativeClustering(n_clusters=2, affinity='euclidean', linkage='ward')
+label = cluster.fit_predict(data_scaled)
+
+# Combine the cluster labels with the original data
+data1 = df1['Subjects']
+data2 = data1.values
+dat_type = pd.DataFrame(label)
+dat_type.columns = ['type']
+dat = pd.merge(df1, dat_type, left_index=True, right_index=True)
+
+# Sort the data based on the cluster labels and save it to an Excel file
+pd.set_option('display.max_rows', None)
+dat.sort_values('type')
+dat.to_excel('F:\L5-S1.标签.xlsx')
